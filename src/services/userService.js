@@ -62,6 +62,7 @@ export const getUserProfile = () => {
     username: 'Shooter',
     avatar: null,
     bio: '',
+    whatsappNumber: '',
     userId: getUserIdentifier(),
   }
 }

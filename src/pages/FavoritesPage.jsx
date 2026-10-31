@@ -9,7 +9,7 @@ import GunCard from '../components/gun/GunCard'
  * FavoritesPage — Displays user's shortlisted / favorited weapons.
  * Supports dual-mode (server API + localStorage fallback).
  */
-export default function FavoritesPage({ onSelectGun, onNavigateCatalog }) {
+export default function FavoritesPage({ onSelectGun, onNavigateCatalog, onAddToCart }) {
   const { favorites, loading: favLoading, error: favError, refetch } = useFavorites()
   const { guns: apiGuns } = useGuns({ limit: 100 })
 
@@ -125,6 +125,7 @@ export default function FavoritesPage({ onSelectGun, onNavigateCatalog }) {
                 key={gun.id || gun.name}
                 gun={gun}
                 onSelect={onSelectGun}
+                onAddToCart={onAddToCart}
               />
             ))}
           </ul>

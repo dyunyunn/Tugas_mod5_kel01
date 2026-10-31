@@ -1,15 +1,13 @@
-import { Plus } from 'lucide-react'
+import { Plus, ShoppingCart } from 'lucide-react'
 import { useFavorites } from '../hooks/useFavorites'
 
 const NAV_ITEMS = [
   { id: 'Catalog', label: 'Catalog' },
   { id: 'Favorites', label: 'Favorites', hasBadge: true },
   { id: 'Profile', label: 'Profile' },
-  { id: 'About', label: 'About' },
-  { id: 'Contact', label: 'Contact' },
 ]
 
-function Header({ tab, onTab, onNavigateCreate }) {
+function Header({ tab, onTab, onNavigateCreate, onNavigateCart, cartCount = 0 }) {
   const { favorites } = useFavorites()
   const favCount = favorites ? favorites.length : 0
 
@@ -37,6 +35,13 @@ function Header({ tab, onTab, onNavigateCreate }) {
           </button>
         ))}
       </nav>
+
+      {onNavigateCart && (
+        <button type="button" className="btn btn--outline btn--sm header-cart" onClick={onNavigateCart}>
+          <ShoppingCart size={15} /> Cart
+          {cartCount > 0 && <span className="nav-badge">{cartCount}</span>}
+        </button>
+      )}
 
       {onNavigateCreate && (
         <button

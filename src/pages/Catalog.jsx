@@ -6,7 +6,7 @@ import GunCard from '../components/gun/GunCard'
 import GunDetail from '../components/gun/GunDetail'
 import AdvancedFilter from '../components/common/AdvancedFilter'
 import ConfirmModal from '../components/modals/ConfirmModal'
-import gunService from '../services/gunService'
+import archiveService from '../services/archiveService'
 import {
   matchesSearch,
   matchesCategory,
@@ -23,10 +23,17 @@ import {
  *
  * Features: search, category filter, sort, CRUD actions, detail modal.
  */
-export default function Catalog({ onNavigate }) {
+export default function Catalog({ onNavigate, onAddToCart }) {
   // ---- API data ----
   const { guns: apiGuns, loading, error, refetch } = useGuns({ limit: 50 })
   const [useLocal, setUseLocal] = useState(false)
+  const [archivedIds, setArchivedIds] = useState(() => {
+    try {
+      return archiveService.getArchivedIds()
+    } catch {
+      return []
+    }
+  })
 
   // Decide data source
   const rawGuns = useMemo(() => {
@@ -47,31 +54,34 @@ export default function Catalog({ onNavigate }) {
 
   const filteredGuns = useMemo(() => {
     let result = rawGuns.filter(
-      (g) => matchesSearch(g, search) && matchesCategory(g, activeCategory),
+      (g) =>
+        !archivedIds.includes(String(g.id)) &&
+        matchesSearch(g, search) &&
+        matchesCategory(g, activeCategory),
     )
     return sortItems(result, sortKey, sortOrder)
-  }, [rawGuns, search, activeCategory, sortKey, sortOrder])
+  }, [rawGuns, archivedIds, search, activeCategory, sortKey, sortOrder])
 
   // ---- detail view ----
   const [selectedGun, setSelectedGun] = useState(null)
 
   // ---- delete ----
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState('')
+  const [archiving, setArchiving] = useState(false)
+  const [archiveError, setArchiveError] = useState('')
 
-  const handleDelete = async () => {
+  const handleArchive = async () => {
     if (!deleteTarget) return
     try {
-      setDeleting(true)
-      setDeleteError('')
-      await gunService.deleteGun(deleteTarget.id)
+      setArchiving(true)
+      setArchiveError('')
+      archiveService.archive(deleteTarget.id)
+      setArchivedIds((current) => [...new Set([...current, String(deleteTarget.id)])])
       setDeleteTarget(null)
-      refetch()
     } catch (err) {
-      setDeleteError(err.message || 'Failed to delete.')
+      setArchiveError(err.message || 'Could not archive product.')
     } finally {
-      setDeleting(false)
+      setArchiving(false)
     }
   }
 
@@ -83,6 +93,7 @@ export default function Catalog({ onNavigate }) {
         onBack={() => setSelectedGun(null)}
         onEdit={(g) => onNavigate && onNavigate('Edit', g)}
         onDelete={(g) => { setSelectedGun(null); setDeleteTarget(g) }}
+        onAddToCart={onAddToCart}
       />
     )
   }
@@ -173,6 +184,7 @@ export default function Catalog({ onNavigate }) {
                 onSelect={setSelectedGun}
                 onEdit={onNavigate ? (g) => onNavigate('Edit', g) : undefined}
                 onDelete={setDeleteTarget}
+                onAddToCart={onAddToCart}
               />
             ))}
           </ul>
@@ -195,16 +207,16 @@ export default function Catalog({ onNavigate }) {
       {/* Delete confirmation */}
       <ConfirmModal
         open={!!deleteTarget}
-        title="Delete Product"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
+        title="Archive Product"
+        message={`Archive "${deleteTarget?.name}"? It will be hidden from the catalog and can be restored from your profile.`}
+        confirmLabel="Archive"
         danger
-        loading={deleting}
-        onConfirm={handleDelete}
-        onCancel={() => { setDeleteTarget(null); setDeleteError('') }}
+        loading={archiving}
+        onConfirm={handleArchive}
+        onCancel={() => { setDeleteTarget(null); setArchiveError('') }}
       />
-      {deleteError && (
-        <div className="toast toast--error">{deleteError}</div>
+      {archiveError && (
+        <div className="toast toast--error">{archiveError}</div>
       )}
     </>
   )
