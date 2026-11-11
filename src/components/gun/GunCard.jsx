@@ -1,6 +1,6 @@
 import FavoriteButton from '../common/FavoriteButton'
 import { formatPrice, truncate } from '../../utils/helpers'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Share2 } from 'lucide-react' // Tambahan import Share2
 
 /**
  * Product card used in the catalog grid.
@@ -16,6 +16,24 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete, onAddToCart }
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
+
+  // 1. Fungsi Web Share API
+  const handleShare = async (e) => {
+    e.stopPropagation() // Mencegah klik kartu utama secara tidak sengaja
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Bore & Barrel - ${gun.name}`,
+          text: `Cek ${gun.name} (${category}) seharga ${formatPrice(price)} ini!`,
+          url: window.location.href
+        })
+      } catch (error) {
+        console.log('Batal membagikan:', error)
+      }
+    } else {
+      alert('Fitur Share tidak didukung di browser ini. Coba buka via browser HP!')
+    }
+  }
 
   return (
     <li className="card">
@@ -56,6 +74,17 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete, onAddToCart }
       {/* Floating actions row */}
       <div className="card-actions">
         <FavoriteButton gunId={gun.id || gun.name} />
+
+        {/* 2. Tombol Share Baru */}
+        <button
+          type="button"
+          className="card-act-btn"
+          onClick={handleShare}
+          aria-label={`Share ${gun.name}`}
+          title="Share to..."
+        >
+          <Share2 size={15} />
+        </button>
 
         {onAddToCart && (
           <button
