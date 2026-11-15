@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Star, Send, Loader, Share2, ShoppingCart, ThumbsDown, ThumbsUp, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Star, Send, Loader, Share2, ShoppingCart, ThumbsDown, ThumbsUp, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react' // Tambahan ChevronLeft & ChevronRight
 import FavoriteButton from '../common/FavoriteButton'
 import { useReviews, useCreateReview } from '../../hooks/useReviews'
 import { getUserIdentifier } from '../../services/userService'
@@ -18,6 +18,20 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
   useEffect(() => {
     setActiveImage(imageList[0] || '/guns/pistol.svg')
   }, [gun.image_url])
+
+  // --- LOGIKA SLIDER PANAH KIRI & KANAN ---
+  const currentIndex = imageList.indexOf(activeImage)
+  
+  const handlePrevImage = () => {
+    const prevIndex = currentIndex === 0 ? imageList.length - 1 : currentIndex - 1
+    setActiveImage(imageList[prevIndex])
+  }
+  
+  const handleNextImage = () => {
+    const nextIndex = currentIndex === imageList.length - 1 ? 0 : currentIndex + 1
+    setActiveImage(imageList[nextIndex])
+  }
+  // ----------------------------------------
 
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
@@ -93,14 +107,53 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
       <button type="button" className="detail-back" onClick={onBack}><ArrowLeft size={18} /> Back to Catalog</button>
 
       <div className="detail-hero">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <img
-            className="detail-img"
-            src={activeImage}
-            alt={gun.name}
-            loading="lazy"
-            onError={(e) => { if (!e.currentTarget.src.endsWith('/guns/pistol.svg')) e.currentTarget.src = '/guns/pistol.svg' }}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+          
+          {/* PEMBUNGKUS GAMBAR UTAMA DAN PANAH */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <img
+              className="detail-img"
+              src={activeImage}
+              alt={gun.name}
+              loading="lazy"
+              onError={(e) => { if (!e.currentTarget.src.endsWith('/guns/pistol.svg')) e.currentTarget.src = '/guns/pistol.svg' }}
+              style={{ width: '100%' }}
+            />
+            
+            {/* Tombol Panah Kiri & Kanan (Hanya muncul jika gambar lebih dari 1) */}
+            {imageList.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrevImage}
+                  style={{
+                    position: 'absolute', left: '10px', background: 'rgba(0, 0, 0, 0.5)', color: 'white',
+                    border: 'none', borderRadius: '50%', width: '36px', height: '36px',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', transition: '0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.8)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextImage}
+                  style={{
+                    position: 'absolute', right: '10px', background: 'rgba(0, 0, 0, 0.5)', color: 'white',
+                    border: 'none', borderRadius: '50%', width: '36px', height: '36px',
+                    display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', transition: '0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.8)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.5)'}
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* THUMBNAILS (Tetap dipertahankan) */}
           {imageList.length > 1 && (
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '5px' }}>
               {imageList.map((img, idx) => (
