@@ -7,22 +7,18 @@ import reviewService from '../../services/reviewService'
 import { formatPrice, averageRating } from '../../utils/helpers'
 import { getGunShareUrl } from '../../utils/share'
 
-/**
- * Full-screen product detail view.
- *
- * @param {Object}   props
- * @param {Object}   props.gun       — product data
- * @param {Function} props.onBack    — return to catalog
- * @param {Function} [props.onEdit]  — navigate to edit page
- * @param {Function} [props.onDelete]— trigger delete flow
- */
 export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }) {
-  const imgSrc = gun.image_url || gun.image || '/guns/pistol.svg'
+  // PERBAIKAN: Pisahkan URL berdasarkan koma menjadi Array
+  const rawImage = gun.image_url || gun.image || '/guns/pistol.svg'
+  const imageList = rawImage.includes(',') ? rawImage.split(',') : [rawImage]
+  
+  // State untuk menyimpan gambar utama yang sedang ditampilkan
+  const [activeImage, setActiveImage] = useState(imageList[0])
+
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
 
-  // Reviews
   const { reviews, loading: reviewsLoading, refetch: refetchReviews } = useReviews(gun.id)
   const { createReview, loading: submitting } = useCreateReview()
   const [rating, setRating] = useState(5)
@@ -46,25 +42,16 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
     e.preventDefault()
     setReviewError('')
     setReviewSuccess('')
+    if (rating < 1 || rating > 5) return setReviewError('Rating must be between 1 and 5.')
 
-    if (rating < 1 || rating > 5) {
-      setReviewError('Rating must be between 1 and 5.')
-      return
-    }
-
-    const data = {
-      user_identifier: getUserIdentifier(),
-      rating,
-      comment: comment.trim(),
-    }
+    const data = { user_identifier: getUserIdentifier(), rating, comment: comment.trim() }
     let result
     if (editingReview) {
       try {
         const response = await reviewService.updateReview(editingReview.id, data)
         result = response?.data || response
       } catch (err) {
-        setReviewError(err.message || 'Could not update review.')
-        return
+        return setReviewError(err.message || 'Could not update review.')
       }
     } else {
       result = await createReview(gun.id, data)
@@ -77,7 +64,7 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
       setEditingReview(null)
       refetchReviews()
     } else {
-      setReviewError(editingReview ? 'Could not update review.' : 'Could not submit review. The server may be unavailable.')
+      setReviewError(editingReview ? 'Could not update review.' : 'Could not submit review.')
     }
   }
 
@@ -102,7 +89,6 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
     const updatedVotes = { ...reviewVotes }
     if (nextVote) updatedVotes[reviewKey] = nextVote
     else delete updatedVotes[reviewKey]
-
     try {
       localStorage.setItem('bore_barrel_review_votes', JSON.stringify(updatedVotes))
       setReviewVotes(updatedVotes)
@@ -131,30 +117,45 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
 
   return (
     <div className="detail">
-      {/* Back button */}
       <button type="button" className="detail-back" onClick={onBack}>
         <ArrowLeft size={18} /> Back to Catalog
       </button>
 
-      {/* Hero */}
       <div className="detail-hero">
-        <img
-          className="detail-img"
-          src={imgSrc}
-          alt={gun.name}
-          loading="lazy"
-          onError={(event) => {
-            if (!event.currentTarget.src.endsWith('/guns/pistol.svg')) {
-              event.currentTarget.src = '/guns/pistol.svg'
-            }
-          }}
-        />
+        {/* GALERI GAMBAR */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <img
+            className="detail-img"
+            src={activeImage}
+            alt={gun.name}
+            loading="lazy"
+            onError={(e) => {
+              if (!e.currentTarget.src.endsWith('/guns/pistol.svg')) e.currentTarget.src = '/guns/pistol.svg'
+            }}
+          />
+          {/* Thumbnails (muncul jika gambar lebih dari 1) */}
+          {imageList.length > 1 && (
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '5px' }}>
+              {imageList.map((img, idx) => (
+                <img
+                  key={idx}
+                  src={img}
+                  alt={`Thumbnail ${idx + 1}`}
+                  onClick={() => setActiveImage(img)}
+                  style={{ 
+                    width: '60px', height: '60px', objectFit: 'cover', borderRadius: '6px', 
+                    cursor: 'pointer', border: activeImage === img ? '2px solid var(--brass)' : '1px solid var(--line)' 
+                  }}
+                  onError={(e) => e.currentTarget.style.display = 'none'}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="detail-info">
           <h1 className="display">{gun.name}</h1>
-          <p className="type">
-            {category}
-            {caliber ? ` · ${caliber}` : ''}
-          </p>
+          <p className="type">{category}{caliber ? ` · ${caliber}` : ''}</p>
           <p className="price detail-price">{formatPrice(price)}</p>
 
           {avgRating > 0 && (
@@ -175,35 +176,23 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
               <Share2 size={16} /> Share
             </button>
             {shareFeedback && <span className="form-hint">{shareFeedback}</span>}
-            {onEdit && (
-              <button type="button" className="btn btn--outline" onClick={() => onEdit(gun)}>
-                Edit
-              </button>
-            )}
-            {onDelete && (
-              <button type="button" className="btn btn--danger" onClick={() => onDelete(gun)}>
-                Archive
-              </button>
-            )}
+            {onEdit && <button type="button" className="btn btn--outline" onClick={() => onEdit(gun)}>Edit</button>}
+            {onDelete && <button type="button" className="btn btn--danger" onClick={() => onDelete(gun)}>Archive</button>}
           </div>
         </div>
       </div>
 
-      {/* Description */}
       <section className="detail-section">
         <h2>Description</h2>
         <p>{gun.description || 'No description available.'}</p>
       </section>
 
-      {/* Specifications (from ingredients / steps if present) */}
       {gun.ingredients && gun.ingredients.length > 0 && (
         <section className="detail-section">
           <h2>Specifications</h2>
           <ul className="detail-specs">
             {gun.ingredients.map((ing, i) => (
-              <li key={ing.id || i}>
-                <strong>{ing.name}</strong> — {ing.quantity}
-              </li>
+              <li key={ing.id || i}><strong>{ing.name}</strong> — {ing.quantity}</li>
             ))}
           </ul>
         </section>
@@ -214,83 +203,35 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
           <h2>Assembly / Maintenance Steps</h2>
           <ol className="detail-steps">
             {gun.steps.map((step, i) => (
-              <li key={step.id || i}>
-                {step.instruction || step}
-              </li>
+              <li key={step.id || i}>{step.instruction || step}</li>
             ))}
           </ol>
         </section>
       )}
 
-      {/* Reviews Section */}
       <section className="detail-section">
         <h2>Reviews</h2>
         <p className="form-hint">Review votes are saved on this device.</p>
-
-        {/* Submit review */}
         <form className="review-form" onSubmit={handleSubmitReview}>
           <div className="review-stars">
             {[1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                type="button"
-                className="star-btn"
-                onClick={() => setRating(n)}
-                aria-label={`${n} star${n > 1 ? 's' : ''}`}
-              >
-                <Star
-                  size={22}
-                  fill={n <= rating ? 'var(--brass)' : 'none'}
-                  stroke={n <= rating ? 'var(--brass)' : 'var(--steel)'}
-                />
+              <button key={n} type="button" className="star-btn" onClick={() => setRating(n)}>
+                <Star size={22} fill={n <= rating ? 'var(--brass)' : 'none'} stroke={n <= rating ? 'var(--brass)' : 'var(--steel)'} />
               </button>
             ))}
           </div>
-
-          <textarea
-            className="review-input"
-            rows="3"
-            placeholder="Write a short review (optional)…"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            maxLength={500}
-          />
-
-          <button
-            type="submit"
-            className="btn btn--primary"
-            disabled={submitting || !gun.id}
-          >
-            {submitting ? (
-              <><Loader size={16} className="spin" /> Submitting…</>
-            ) : (
-              <><Send size={16} /> {editingReview ? 'Save Review' : 'Submit Review'}</>
-            )}
+          <textarea className="review-input" rows="3" placeholder="Write a short review (optional)…" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} />
+          <button type="submit" className="btn btn--primary" disabled={submitting || !gun.id}>
+            {submitting ? <><Loader size={16} className="spin" /> Submitting…</> : <><Send size={16} /> {editingReview ? 'Save Review' : 'Submit Review'}</>}
           </button>
           {editingReview && (
-            <button
-              type="button"
-              className="btn btn--outline"
-              onClick={() => {
-                setEditingReview(null)
-                setComment('')
-                setRating(5)
-              }}
-            >
-              Cancel edit
-            </button>
+            <button type="button" className="btn btn--outline" onClick={() => { setEditingReview(null); setComment(''); setRating(5) }}>Cancel edit</button>
           )}
-
           {reviewError && <p className="form-error">{reviewError}</p>}
           {reviewSuccess && <p className="form-success">{reviewSuccess}</p>}
-          {!gun.id && (
-            <p className="form-hint">
-              Reviews require a server-generated product ID. This product is local-only.
-            </p>
-          )}
+          {!gun.id && <p className="form-hint">Reviews require a server-generated product ID.</p>}
         </form>
 
-        {/* Existing reviews */}
         {reviewsLoading ? (
           <p className="detail-loading">Loading reviews…</p>
         ) : reviews.length > 0 ? (
@@ -301,12 +242,7 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
                   <span className="review-user">{rev.user_identifier || 'Anonymous'}</span>
                   <span className="review-stars-display">
                     {Array.from({ length: 5 }, (_, i) => (
-                      <Star
-                        key={i}
-                        size={14}
-                        fill={i < rev.rating ? 'var(--brass)' : 'none'}
-                        stroke={i < rev.rating ? 'var(--brass)' : 'var(--line)'}
-                      />
+                      <Star key={i} size={14} fill={i < rev.rating ? 'var(--brass)' : 'none'} stroke={i < rev.rating ? 'var(--brass)' : 'var(--line)'} />
                     ))}
                   </span>
                 </div>
@@ -317,25 +253,15 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete, onAddToCart }
                     const Icon = vote === 'up' ? ThumbsUp : ThumbsDown
                     const selected = reviewVotes[String(rev.id)] === vote
                     return (
-                      <button
-                        key={vote}
-                        type="button"
-                        className={`review-vote${selected ? ' review-vote--active' : ''}`}
-                        onClick={() => handleReviewVote(rev, vote)}
-                        aria-pressed={selected}
-                      >
+                      <button key={vote} type="button" className={`review-vote${selected ? ' review-vote--active' : ''}`} onClick={() => handleReviewVote(rev, vote)}>
                         <Icon size={15} /> {Math.max(0, Number(rev[countKey]) || 0) + (selected ? 1 : 0)}
                       </button>
                     )
                   })}
                   {(rev.user_id === getUserIdentifier() || rev.user_identifier === getUserIdentifier()) && (
                     <>
-                      <button type="button" className="review-vote" onClick={() => startEditingReview(rev)} aria-label="Edit your review">
-                        <Pencil size={14} /> Edit
-                      </button>
-                      <button type="button" className="review-vote" onClick={() => handleDeleteReview(rev)} aria-label="Delete your review">
-                        <Trash2 size={14} /> Delete
-                      </button>
+                      <button type="button" className="review-vote" onClick={() => startEditingReview(rev)}><Pencil size={14} /> Edit</button>
+                      <button type="button" className="review-vote" onClick={() => handleDeleteReview(rev)}><Trash2 size={14} /> Delete</button>
                     </>
                   )}
                 </div>
