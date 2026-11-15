@@ -43,7 +43,8 @@ class ReviewService {
   async createReview(gunId, reviewData) {
     if (IS_SUPABASE) {
       const payload = {
-        product_id: Number(gunId),
+        // PERBAIKAN: Gunakan String() agar UUID senjata tidak berubah jadi NaN
+        product_id: String(gunId), 
         user_id: reviewData.user_id || reviewData.user_identifier,
         rating: Number(reviewData.rating),
         comment: reviewData.comment || '',
