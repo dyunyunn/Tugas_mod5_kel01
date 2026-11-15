@@ -36,8 +36,7 @@ export default function CreateGunPage({ onBack, onSuccess }) {
     is_featured: false,
   })
 
-  // --- PERUBAHAN MULTI-UPLOAD: State diubah menjadi Array ---
-  const [images, setImages] = useState([]) // Menyimpan file & preview
+  const [images, setImages] = useState([]) 
   const [uploadedImageUrls, setUploadedImageUrls] = useState([])
 
   const [specs, setSpecs] = useState([
@@ -93,7 +92,6 @@ export default function CreateGunPage({ onBack, onSuccess }) {
       if (draft.steps) setSteps(draft.steps)
       if (draft.uploadedImageUrls) {
         setUploadedImageUrls(draft.uploadedImageUrls)
-        // Re-create preview format dari draft URLs
         setImages(draft.uploadedImageUrls.map(url => ({
           id: Math.random().toString(36).substring(7),
           file: null,
@@ -113,7 +111,6 @@ export default function CreateGunPage({ onBack, onSuccess }) {
     setDraftTimestamp(null)
   }
 
-  // --- PERUBAHAN MULTI-UPLOAD: Handle Multiple Files ---
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
@@ -151,7 +148,6 @@ export default function CreateGunPage({ onBack, onSuccess }) {
     setError('')
   }
 
-  // --- PERUBAHAN MULTI-UPLOAD: Upload Semua File Sekaligus ---
   const handleUploadImage = async () => {
     if (images.length === 0) {
       if (uploadedImageUrls.length > 0) {
@@ -166,14 +162,13 @@ export default function CreateGunPage({ onBack, onSuccess }) {
       setUploading(true)
       setError('')
       
-      // Upload paralel menggunakan Promise.all
       const uploadPromises = images.map(async (img) => {
         if (img.file) {
           const result = await uploadService.uploadImage(img.file)
           if (result.success && result.data?.url) return result.data.url
           throw new Error('Image upload failed.')
         }
-        return img.preview // Fallback untuk preset
+        return img.preview
       })
 
       const urls = await Promise.all(uploadPromises)
@@ -240,9 +235,9 @@ export default function CreateGunPage({ onBack, onSuccess }) {
     const cleanSteps = steps.filter((s) => s.trim()).map((s) => s.trim())
     if (cleanSteps.length === 0) return setError('Please provide at least one step.')
 
-    // Menggabungkan URL array menjadi string ber-koma (jika API backend hanya menerima format string)
+    // Menggunakan pemisah aman ' |;| '
     const combinedImageUrl = uploadedImageUrls.length > 0 
-      ? uploadedImageUrls.join(',') 
+      ? uploadedImageUrls.join(' |;| ') 
       : '/guns/pistol.svg'
 
     const payload = {
@@ -316,7 +311,6 @@ export default function CreateGunPage({ onBack, onSuccess }) {
 
           {images.length === 0 ? (
             <div className="upload-dropzone">
-              {/* --- PERUBAHAN MULTI-UPLOAD: Atribut 'multiple' ditambahkan --- */}
               <input
                 id="gun-image-input"
                 type="file"
@@ -342,7 +336,6 @@ export default function CreateGunPage({ onBack, onSuccess }) {
             </div>
           ) : (
             <div className="preview-container">
-              {/* --- PERUBAHAN MULTI-UPLOAD: Grid Preview Gambar --- */}
               <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '20px' }}>
                 {images.map((img) => (
                   <div key={img.id} style={{ position: 'relative', width: '120px', height: '120px' }}>
@@ -366,7 +359,6 @@ export default function CreateGunPage({ onBack, onSuccess }) {
                   </div>
                 ))}
                 
-                {/* Tombol tambah gambar lagi */}
                 <label style={{ 
                   width: '120px', height: '120px', border: '2px dashed #ccc', 
                   borderRadius: '8px', display: 'flex', justifyContent: 'center', 
@@ -396,7 +388,6 @@ export default function CreateGunPage({ onBack, onSuccess }) {
       {currentStep === 'form' && (
         <form onSubmit={handleSubmit} className="entry-form">
           <div className="selected-thumb-bar">
-            {/* Tampilkan gambar pertama sebagai thumbnail representatif */}
             <img src={uploadedImageUrls[0] || images[0]?.preview} alt="Selected" className="thumb-small" />
             <div className="thumb-info">
               <span className="thumb-title">{uploadedImageUrls.length || images.length} Imagery Assigned</span>
